@@ -1,4 +1,5 @@
 using FerreteriaAPI.Models; // Asegúrate de que este sea el namespace correcto donde se generó tu FerreteriaContext
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,9 +14,23 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
 
+// Política CORS para permitir peticiones desde el frontend de Angular
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Registro del contexto de la base de datos de la ferretería
 builder.Services.AddDbContext<FerreteriaContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Hash de contraseñas (PBKDF2 con HMAC-SHA512, sal aleatoria por usuario)
+builder.Services.AddScoped<IPasswordHasher<Usuarios>, PasswordHasher<Usuarios>>();
 
 var app = builder.Build();
 

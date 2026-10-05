@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FerreteriaAPI.Models;
 
@@ -9,10 +10,12 @@ namespace FerreteriaAPI.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly FerreteriaContext _context;
+        private readonly IPasswordHasher<Usuarios> _passwordHasher;
 
-        public UsuariosController(FerreteriaContext context)
+        public UsuariosController(FerreteriaContext context, IPasswordHasher<Usuarios> passwordHasher)
         {
             _context = context;
+            _passwordHasher = passwordHasher;
         }
 
         // GET: api/Usuarios
@@ -36,25 +39,52 @@ namespace FerreteriaAPI.Controllers
             {
                 NombreCompleto = dto.NombreCompleto,
                 Email = dto.Email,
-                ContrasenaHash = dto.ContrasenaHash,
                 IdRol = dto.IdRol,
                 Estado = true,
                 FechaRegistro = DateTime.Now
             };
+            nuevoUsuario.ContrasenaHash = _passwordHasher.HashPassword(nuevoUsuario, dto.Contrasena);
 
             _context.Usuarios.Add(nuevoUsuario);
             await _context.SaveChangesAsync();
 
             return Ok(new { mensaje = "Usuario registrado exitosamente", usuario = nuevoUsuario });
         }
-    }
 
-    // DTO para recibir los datos limpios desde Swagger sin errores de navegación
-    public class UsuarioRegistroDto
-    {
-        public string NombreCompleto { get; set; } = null!;
-        public string Email { get; set; } = null!;
-        public string ContrasenaHash { get; set; } = null!;
-        public int IdRol { get; set; }
+        // POST: api/Usuarios/Login
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UsuarioLoginDto dto)
+        {
+            var usuario = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (usuario == null || usuario.Estado == false)
+            {
+                return Unauthorized("Correo o contraseña incorrectos.");
+            }
+
+            PasswordVerificationResult resultado;
+            try
+            {
+                resultado = _passwordHasher.VerifyHashedPassword(usuario, usuario.ContrasenaHash, dto.Contrasena);
+            }
+            catch (FormatException)
+            {
+                // Usuarios antiguos con la contraseña guardada en texto plano (no es un hash válido)
+                resultado = PasswordVerificationResult.Failed;
+            }
+
+            if (resultado == PasswordVerificationResult.Failed)
+            {
+                return Unauthorized("Correo o contraseña incorrectos.");
+            }
+
+            // El hash fue generado con parámetros antiguos: se actualiza al formato actual
+            if (resultado == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                usuario.ContrasenaHash = _passwordHasher.HashPassword(usuario, dto.Contrasena);
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new { mensaje = "Inicio de sesión exitoso", usuario });
+        }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 namespace FerreteriaAPI.Models;
 
 [Table("Usuarios")]         
@@ -14,6 +15,7 @@ public partial class Usuarios
 
     public string Email { get; set; } = null!;
 
+    [JsonIgnore] // Nunca exponer el hash en las respuestas de la API
     public string ContrasenaHash { get; set; } = null!;
 
     public int IdRol { get; set; }
