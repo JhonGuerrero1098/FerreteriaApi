@@ -1,10 +1,9 @@
-using FerreteriaAPI.Models; // Asegúrate de que este sea el namespace correcto donde se generó tu FerreteriaContext
+using FerreteriaAPI.Models; 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -19,7 +18,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -47,8 +46,9 @@ app.MapGet("/", async context =>
     await Task.CompletedTask;
 });
 
-app.UseCors("AngularPolicy");
 
+
+app.UseCors("AngularPolicy");
 app.UseHttpsRedirection();
 
 app.UseAuthorization();

@@ -15,6 +15,12 @@ public class ClientesController : ControllerBase
         _context = context;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Clientes>>> GetClientes()
+    {
+        return await _context.Clientes.ToListAsync();
+    }
+
     // GET: api/Clientes/5
     [HttpGet("{id}")]
     public async Task<ActionResult<Clientes>> GetCliente(int id)
@@ -65,7 +71,7 @@ public class ClientesController : ControllerBase
         return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id }, cliente);
     }
 
-    /* DELETE: api/Clientes/5
+    /* DELETE: api/Clientes/
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCliente(int id)
     {
