@@ -20,3 +20,4 @@ public partial class Ventas
 
     public virtual Clientes? IdClienteNavigation { get; set; } 
 }
+git g
