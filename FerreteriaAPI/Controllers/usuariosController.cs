@@ -27,12 +27,19 @@ namespace FerreteriaAPI.Controllers
 
         // POST: api/Usuarios/Registro
         [HttpPost("Registro")]
-        public async Task<ActionResult> PostUsuario(UsuarioRegistroDto dto)
+        public async Task<IActionResult> Registro([FromBody] UsuarioRegistroDto dto)
         {
-            var existe = await _context.Usuarios.AnyAsync(u => u.Email == dto.Email);
-            if (existe)
+            // BLOQUEO DE SEGURIDAD: Nadie puede crear un Superusuario (Rol 3) desde la app web/API
+            if (dto.IdRol == 3)
             {
-                return BadRequest("Ya existe un usuario registrado con este correo.");
+                return BadRequest("Por seguridad, las cuentas con rol de Superusuario solo pueden ser creadas directamente desde la base de datos.");
+            }
+
+            // Validar si el correo ya está registrado
+            var existeCorreo = await _context.Usuarios.AnyAsync(u => u.Email == dto.Email);
+            if (existeCorreo)
+            {
+                return BadRequest("Ya existe un usuario registrado con este correo electrónico.");
             }
 
             var nuevoUsuario = new Usuarios
@@ -43,6 +50,8 @@ namespace FerreteriaAPI.Controllers
                 Estado = true,
                 FechaRegistro = DateTime.Now
             };
+
+            // Hashear la contraseña de forma segura
             nuevoUsuario.ContrasenaHash = _passwordHasher.HashPassword(nuevoUsuario, dto.Contrasena);
 
             _context.Usuarios.Add(nuevoUsuario);

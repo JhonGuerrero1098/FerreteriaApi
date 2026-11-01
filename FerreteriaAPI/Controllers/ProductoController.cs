@@ -16,18 +16,19 @@ public class ProductosController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
     {
+        // Solo retorna los productos que estén activos (Activo == true)
         return await _context.Productos
-            .Include(p => p.IdCategoriaNavigation) 
+            .Where(p => p.Activo)
+            .Include(p => p.IdCategoriaNavigation)
             .ToListAsync();
     }
 
-    
     [HttpGet("{id}")]
     public async Task<ActionResult<Producto>> GetProducto(int id)
     {
         var producto = await _context.Productos
             .Include(p => p.IdCategoriaNavigation)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id && p.Activo);
 
         if (producto == null)
         {
@@ -37,7 +38,6 @@ public class ProductosController : ControllerBase
         return producto;
     }
 
-    
     [HttpPut("{id}")]
     public async Task<IActionResult> PutProducto(int id, Producto producto)
     {
@@ -67,18 +67,18 @@ public class ProductosController : ControllerBase
         return NoContent();
     }
 
-    
     [HttpPost]
     public async Task<ActionResult<Producto>> PostProducto(Producto producto)
     {
+        producto.Activo = true; // Asegurar que nazca activo por defecto
         _context.Productos.Add(producto);
         await _context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, producto);
     }
 
-    
-    /*[HttpDelete("{id}")]
+    // SOFT DELETE: En lugar de borrar de la BD, marcamos Activo = false
+    [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProducto(int id)
     {
         var producto = await _context.Productos.FindAsync(id);
@@ -87,14 +87,16 @@ public class ProductosController : ControllerBase
             return NotFound();
         }
 
-        _context.Productos.Remove(producto);
+        // Cambiamos el estado a inactivo en lugar de removerlo físicamente
+        producto.Activo = false;
+        _context.Entry(producto).State = EntityState.Modified;
         await _context.SaveChangesAsync();
 
         return NoContent();
-    }*/
+    }
 
     private bool ProductoExists(int id)
     {
-        return _context.Productos.Any(e => e.Id == id);
+        return _context.Productos.Any(e => e.Id == id && e.Activo);
     }
 }

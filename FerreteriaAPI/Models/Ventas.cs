@@ -14,7 +14,7 @@ public partial class Ventas
 
     public decimal ValorTotal { get; set; }
 
-    public int IdCliente { get; set; }
+    public int? IdCliente{ get; set; }
 
     public virtual ICollection<DetalleVenta> DetalleVenta { get; set; } = new List<DetalleVenta>();
 

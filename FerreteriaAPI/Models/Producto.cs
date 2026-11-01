@@ -25,6 +25,8 @@ public partial class Producto
 
     public string? CodigoBarras { get; set; }
 
+    public bool Activo { get; set; } = true;
+
     public virtual ICollection<DetalleVenta> DetalleVenta { get; set; } = new List<DetalleVenta>();
 
     public virtual Categorias? IdCategoriaNavigation { get; set; }
