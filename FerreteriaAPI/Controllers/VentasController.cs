@@ -41,52 +41,66 @@ public class VentasController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Ventas>> PostVenta(Ventas venta)
+    public async Task<ActionResult<Ventas>> PostVenta([FromBody] VentaCreateDto dto)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            if (venta.DetalleVenta == null || !venta.DetalleVenta.Any())
+            if (dto.DetalleVenta == null || !dto.DetalleVenta.Any())
             {
                 return BadRequest("La venta debe incluir al menos un producto.");
             }
+
+            var nuevaVenta = new Ventas
+            {
+                IdCliente = dto.IdCliente,
+                MetodoPago = !string.IsNullOrEmpty(dto.MetodoPago) ? dto.MetodoPago : "Efectivo",
+                Fecha = DateTime.Now,
+                DetalleVenta = new List<DetalleVenta>()
+            };
+
             decimal valorTotalCalculado = 0;
 
-            foreach (var detalle in venta.DetalleVenta)
+            foreach (var itemDto in dto.DetalleVenta)
             {
-                var producto = await _context.Productos.FindAsync(detalle.IdProducto);
+                var producto = await _context.Productos.FindAsync(itemDto.IdProducto);
 
                 if (producto == null)
                 {
-                    return NotFound($"El producto con ID {detalle.IdProducto} no existe.");
+                    return NotFound($"El producto con ID {itemDto.IdProducto} no existe.");
                 }
 
-                if (producto.Stock < detalle.Cantidad)
+                if (producto.Stock < itemDto.Cantidad)
                 {
-                    return BadRequest($"Stock insuficiente para el producto {producto.Nombre}. Stock actual: {producto.Stock}, solicitado: {detalle.Cantidad}");
+                    return BadRequest($"Stock insuficiente para el producto {producto.Nombre}. Stock actual: {producto.Stock}, solicitado: {itemDto.Cantidad}");
                 }
 
-                detalle.PrecioUnitario = producto.Precio;
-                valorTotalCalculado += producto.Precio * detalle.Cantidad;
+                valorTotalCalculado += producto.Precio * itemDto.Cantidad;
 
-                producto.Stock -= detalle.Cantidad;
+                producto.Stock -= itemDto.Cantidad;
                 _context.Productos.Update(producto);
 
                 if (producto.Stock <= 10)
                 {
                     EnviarSmsAlAdmin(producto.Nombre, producto.Stock);
                 }
+
+                nuevaVenta.DetalleVenta.Add(new DetalleVenta
+                {
+                    IdProducto = itemDto.IdProducto,
+                    Cantidad = itemDto.Cantidad,
+                    PrecioUnitario = producto.Precio
+                });
             }
 
-            venta.Fecha = DateTime.Now;
-            venta.ValorTotal = valorTotalCalculado;
+            nuevaVenta.ValorTotal = valorTotalCalculado;
 
-            _context.Ventas.Add(venta);
+            _context.Ventas.Add(nuevaVenta);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return CreatedAtAction(nameof(GetVenta), new { id = venta.Id }, venta);
+            return CreatedAtAction(nameof(GetVenta), new { id = nuevaVenta.Id }, nuevaVenta);
         }
         catch (Exception ex)
         {
@@ -184,4 +198,18 @@ public class VentasController : ControllerBase
             totalUnidadesVendidas = productoMasVendido.TotalCantidadVendida
         });
     }
+}
+
+// DTOs limpios sin duplicidad de nombres
+public class VentaCreateDto
+{
+    public int? IdCliente { get; set; }
+    public string? MetodoPago { get; set; }
+    public List<DetalleVentaCreateDto> DetalleVenta { get; set; } = new();
+}
+
+public class DetalleVentaCreateDto
+{
+    public int IdProducto { get; set; }
+    public int Cantidad { get; set; }
 }
